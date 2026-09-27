@@ -1,0 +1,15 @@
+# runtime (never commit)
+__pycache__/
+*.pyc
+runs.db
+server-out.log
+server-errors.log
+.env
+
+# local audio (regenerates)
+/tmp/
+*.mp3
+
+# OS
+Desktop.ini
+Thumbs.db

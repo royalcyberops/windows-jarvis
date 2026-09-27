@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>JARVIS voice (Windows)</title></head>
+<body style="font-family:sans-serif;background:#05070f;color:#cfe3ff">
+<h2>JARVIS voice — Chrome Web Speech in, ElevenLabs out</h2>
+<p>Mic uses Web Speech API (Chrome only, same as original voice.ts). TTS uses ElevenLabs, key from env via tiny local proxy — paste key below for this session only, never saved to disk.</p>
+<input id="key" type="password" placeholder="ElevenLabs API key (paste, not saved)" style="width:340px">
+<input id="voice" placeholder="voice_id (optional)" style="width:200px">
+<button id="talk">🎙 Speak</button>
+<div id="log" style="white-space:pre-wrap;margin-top:12px"></div>
+<script>
+const log = m => document.getElementById('log').textContent += m + "\n";
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) log("Mic not supported — open this file in Chrome.");
+let rec = SR ? new SR() : null;
+if (rec) { rec.lang = "en-US"; rec.interimResults = false; }
+async function speak(text) {
+  const key = document.getElementById('key').value.trim();
+  const voiceId = document.getElementById('voice').value.trim() || "JBFqnCBsd6RMkjVDRZzb"; // George, British male (free-tier OK)
+  if (!key) { log("[text] " + text); return; }
+  const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    method: "POST", headers: {"Content-Type": "application/json", "xi-api-key": key},
+    body: JSON.stringify({text, model_id: "eleven_turbo_v2", voice_settings: {stability: 0.5, similarity_boost: 0.75}})
+  });
+  if (!r.ok) { log("ElevenLabs error " + r.status); return; }
+  const buf = await r.arrayBuffer();
+  const url = URL.createObjectURL(new Blob([buf], {type: "audio/mpeg"}));
+  new Audio(url).play();
+}
+if (rec) {
+  rec.onresult = e => {
+    const heard = e.results[0][0].transcript;
+    log("YOU: " + heard);
+    // send to brain.py via backend later; for now echo:
+    speak("Will do, sir. " + heard);
+  };
+  document.getElementById('talk').onclick = () => { rec.start(); log("listening..."); };
+}
+</script>
+</body></html>

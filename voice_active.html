@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>JARVIS active</title></head>
+<body style="font-family:sans-serif;background:#05070f;color:#cfe3ff">
+<h2>JARVIS active — listening, speaking, doing</h2>
+<button id="go">▶ Start listening</button>
+<button id="stop">⏹ Stop</button>
+<div id="runs" style="margin-top:8px;font-size:13px"></div>
+<div id="log" style="white-space:pre-wrap;margin-top:8px"></div>
+<script>
+const log = m => document.getElementById('log').textContent += m + "\n";
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, on = false;
+async function refreshRuns() {
+  try {
+    const r = await fetch('/runs').then(r => r.json());
+    document.getElementById('runs').textContent =
+      "Active listing: " + r.slice(0,5).map(x => `#${x.id} ${x.status} ${x.prompt.slice(0,40)}`).join(" | ");
+  } catch(e) {}
+}
+async function turn(text) {
+  log("YOU: " + text);
+  const r = await fetch('/hear', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text})}).then(r => r.json());
+  if (r.error) { log("ERR: " + r.error); return; }
+  log("JARVIS: " + r.say + " [" + r.action + "]");
+  new Audio(r.audio).play();
+  refreshRuns();
+}
+function loop() {
+  if (!SR) { log("Mic needs Chrome."); return; }
+  rec = new SR(); rec.lang = "en-US"; rec.interimResults = false;
+  rec.onresult = e => { const t = e.results[0][0].transcript; turn(t); };
+  rec.onend = () => { if (on) { try { rec.start(); } catch(e) {} } };
+  try { rec.start(); } catch(e) {}
+  log("listening... speak (try: hello / status report / search youtube for iron man)");
+}
+document.getElementById('go').onclick = () => { on = true; loop(); refreshRuns(); };
+document.getElementById('stop').onclick = () => { on = false; try { rec && rec.stop(); } catch(e) {} log("stopped."); };
+refreshRuns();
+</script>
+</body></html>
